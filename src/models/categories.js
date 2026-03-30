@@ -10,23 +10,15 @@ export function getCategoryById(id) {
   return db.getFirstSync('SELECT * FROM categories WHERE id = ?', [id]);
 }
 
-export function createCategory(category) {
+export function createCategory(name) {
   const db = getDatabase();
-  const { name, description } = category;
-  const result = db.runSync(
-    'INSERT INTO categories (name, description) VALUES (?, ?)',
-    [name, description ?? null]
-  );
+  const result = db.runSync('INSERT INTO categories (name) VALUES (?)', [name]);
   return result.lastInsertRowId;
 }
 
-export function updateCategory(id, category) {
+export function updateCategory(id, name) {
   const db = getDatabase();
-  const { name, description } = category;
-  db.runSync(
-    `UPDATE categories SET name = ?, description = ?, updated_at = datetime('now') WHERE id = ?`,
-    [name, description ?? null, id]
-  );
+  db.runSync('UPDATE categories SET name=? WHERE id=?', [name, id]);
 }
 
 export function deleteCategory(id) {

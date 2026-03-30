@@ -1,81 +1,101 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View, Text, StyleSheet, ScrollView, TextInput,
-  TouchableOpacity, Alert
+  TouchableOpacity, Alert,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { createClient } from '../models/clients';
+import { createClient, getClientById, updateClient } from '../models/clients';
 
-export default function NewClientScreen({ navigation }) {
+export default function NewClientScreen({ route, navigation }) {
+  const editId = route.params?.clientId;
   const [form, setForm] = useState({
-    full_name: '',
-    phone: '',
-    address: '',
-    national_id: '',
-    notes: '',
+    numero_client: '', full_name: '', cin: '', ccp: '',
+    wilaya: '', commune: '', address: '',
+    phone_1: '', phone_2: '', phone_3: '', notes: '',
   });
+
+  useEffect(() => {
+    if (editId) {
+      const c = getClientById(editId);
+      if (c) setForm({ ...c });
+    }
+  }, [editId]);
+
+  function set(key, val) {
+    setForm(prev => ({ ...prev, [key]: val }));
+  }
 
   function handleSave() {
     if (!form.full_name.trim()) {
-      Alert.alert('Error', 'Full name is required.');
+      Alert.alert('Erreur', 'Le nom est obligatoire');
       return;
     }
-    createClient(form);
-    Alert.alert('Success', 'Client created successfully!', [
-      { text: 'OK', onPress: () => navigation.goBack() },
-    ]);
+    if (editId) {
+      updateClient(editId, form);
+    } else {
+      createClient(form);
+    }
+    navigation.goBack();
   }
 
-  const fields = [
-    { label: 'Full Name *', key: 'full_name', placeholder: 'Enter full name' },
-    { label: 'Phone', key: 'phone', placeholder: 'e.g. 0555 123 456', keyboard: 'phone-pad' },
-    { label: 'Address', key: 'address', placeholder: 'Optional' },
-    { label: 'National ID', key: 'national_id', placeholder: 'Optional' },
-  ];
+  function field(label, key, opts = {}) {
+    return (
+      <View style={styles.fieldBox}>
+        <Text style={styles.label}>{label}</Text>
+        <TextInput
+          style={styles.input}
+          value={form[key] ?? ''}
+          onChangeText={v => set(key, v)}
+          placeholderTextColor="#999"
+          {...opts}
+        />
+      </View>
+    );
+  }
 
   return (
     <SafeAreaView style={styles.container}>
-      <ScrollView contentContainerStyle={styles.content}>
-        {fields.map(({ label, key, placeholder, keyboard }) => (
-          <View key={key}>
-            <Text style={styles.inputLabel}>{label}</Text>
-            <TextInput
-              style={styles.input}
-              placeholder={placeholder}
-              value={form[key]}
-              onChangeText={(v) => setForm({ ...form, [key]: v })}
-              keyboardType={keyboard ?? 'default'}
-            />
-          </View>
-        ))}
-        <Text style={styles.inputLabel}>Notes</Text>
-        <TextInput
-          style={[styles.input, styles.textarea]}
-          placeholder="Optional notes..."
-          multiline
-          value={form.notes}
-          onChangeText={(v) => setForm({ ...form, notes: v })}
-        />
-        <TouchableOpacity style={styles.saveBtn} onPress={handleSave}>
-          <Text style={styles.saveBtnText}>Create Client</Text>
+      <View style={styles.header}>
+        <TouchableOpacity onPress={() => navigation.goBack()}>
+          <Text style={styles.backBtn}>← Retour</Text>
         </TouchableOpacity>
+        <Text style={styles.title}>{editId ? 'Modifier client' : 'Nouveau client'}</Text>
+        <TouchableOpacity style={styles.saveBtn} onPress={handleSave}>
+          <Text style={styles.saveBtnText}>Enregistrer</Text>
+        </TouchableOpacity>
+      </View>
+      <ScrollView contentContainerStyle={styles.scroll}>
+        {field('Nom complet *', 'full_name', { placeholder: 'Nom et prénom' })}
+        {field('N° Client', 'numero_client', { placeholder: 'Ex: C001', keyboardType: 'default' })}
+        {field('CIN', 'cin', { placeholder: 'Carte d\'identité nationale' })}
+        {field('CCP', 'ccp', { placeholder: 'Compte CCP' })}
+        {field('Wilaya', 'wilaya', { placeholder: 'Wilaya' })}
+        {field('Commune', 'commune', { placeholder: 'Commune' })}
+        {field('Adresse', 'address', { placeholder: 'Adresse complète', multiline: true })}
+        {field('Téléphone 1', 'phone_1', { placeholder: '0550...', keyboardType: 'phone-pad' })}
+        {field('Téléphone 2', 'phone_2', { placeholder: '0550...', keyboardType: 'phone-pad' })}
+        {field('Téléphone 3', 'phone_3', { placeholder: '0550...', keyboardType: 'phone-pad' })}
+        {field('Notes', 'notes', { placeholder: 'Remarques...', multiline: true })}
       </ScrollView>
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#F5F5F5' },
-  content: { padding: 20 },
-  inputLabel: { fontSize: 13, color: '#555', marginBottom: 4 },
+  container: { flex: 1, backgroundColor: '#F0F2F5' },
+  header: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+    padding: 16, backgroundColor: '#FFF', elevation: 2,
+  },
+  backBtn: { color: '#3498DB', fontSize: 15 },
+  title: { fontSize: 17, fontWeight: 'bold', color: '#2C3E50' },
+  saveBtn: { backgroundColor: '#27AE60', borderRadius: 8, paddingHorizontal: 14, paddingVertical: 8 },
+  saveBtnText: { color: '#FFF', fontWeight: '700' },
+  scroll: { padding: 16, paddingBottom: 60 },
+  fieldBox: { marginBottom: 14 },
+  label: { fontSize: 13, color: '#555', marginBottom: 4, fontWeight: '600' },
   input: {
-    backgroundColor: '#FFF', borderWidth: 1, borderColor: '#DDD',
-    borderRadius: 8, padding: 10, fontSize: 15, marginBottom: 14,
+    backgroundColor: '#FFF', borderRadius: 8, borderWidth: 1, borderColor: '#DDD',
+    padding: 12, fontSize: 14, color: '#2C3E50',
   },
-  textarea: { height: 90, textAlignVertical: 'top' },
-  saveBtn: {
-    backgroundColor: '#4A90E2', borderRadius: 10, padding: 16,
-    alignItems: 'center', marginTop: 8,
-  },
-  saveBtnText: { color: '#FFF', fontSize: 16, fontWeight: '700' },
 });

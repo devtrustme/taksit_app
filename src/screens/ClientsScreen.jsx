@@ -1,7 +1,6 @@
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useState, useCallback } from 'react';
 import {
-  View, Text, StyleSheet, FlatList, TouchableOpacity,
-  TextInput, Alert
+  View, Text, StyleSheet, FlatList, TouchableOpacity, TextInput, Alert,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useFocusEffect } from '@react-navigation/native';
@@ -9,7 +8,7 @@ import { getAllClients, searchClients, deleteClient } from '../models/clients';
 
 export default function ClientsScreen({ navigation }) {
   const [clients, setClients] = useState([]);
-  const [searchQuery, setSearchQuery] = useState('');
+  const [query, setQuery] = useState('');
 
   useFocusEffect(
     useCallback(() => {
@@ -18,127 +17,103 @@ export default function ClientsScreen({ navigation }) {
   );
 
   function loadClients() {
-    const data = getAllClients();
-    setClients(data);
+    setClients(getAllClients());
   }
 
   function handleSearch(text) {
-    setSearchQuery(text);
+    setQuery(text);
     if (text.trim()) {
-      const results = searchClients(text.trim());
-      setClients(results);
+      setClients(searchClients(text.trim()));
     } else {
       loadClients();
     }
   }
 
   function handleDelete(client) {
-    Alert.alert(
-      'Delete Client',
-      `Are you sure you want to delete ${client.full_name}?`,
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Delete',
-          style: 'destructive',
-          onPress: () => {
-            deleteClient(client.id);
-            loadClients();
-          },
-        },
-      ]
-    );
+    Alert.alert('Supprimer', `Supprimer ${client.full_name} ?`, [
+      { text: 'Annuler', style: 'cancel' },
+      {
+        text: 'Supprimer', style: 'destructive',
+        onPress: () => { deleteClient(client.id); loadClients(); },
+      },
+    ]);
   }
 
   function renderItem({ item }) {
     return (
       <TouchableOpacity
-        style={styles.item}
+        style={styles.card}
         onPress={() => navigation.navigate('ClientProfile', { clientId: item.id })}
+        onLongPress={() => handleDelete(item)}
       >
-        <View style={styles.itemInfo}>
-          <Text style={styles.itemName}>{item.full_name}</Text>
-          {item.phone ? <Text style={styles.itemSub}>{item.phone}</Text> : null}
+        <View style={styles.cardRow}>
+          <View style={styles.avatar}>
+            <Text style={styles.avatarText}>{item.full_name.charAt(0).toUpperCase()}</Text>
+          </View>
+          <View style={styles.info}>
+            <Text style={styles.name}>{item.full_name}</Text>
+            {item.phone_1 ? <Text style={styles.sub}>{item.phone_1}</Text> : null}
+            {item.wilaya ? <Text style={styles.sub}>{item.wilaya}{item.commune ? ` — ${item.commune}` : ''}</Text> : null}
+          </View>
         </View>
-        <TouchableOpacity onPress={() => handleDelete(item)} style={styles.deleteBtn}>
-          <Text style={styles.deleteBtnText}>✕</Text>
-        </TouchableOpacity>
       </TouchableOpacity>
     );
   }
 
   return (
     <SafeAreaView style={styles.container}>
-      <TextInput
-        style={styles.searchInput}
-        placeholder="Search clients..."
-        value={searchQuery}
-        onChangeText={handleSearch}
-      />
+      <View style={styles.header}>
+        <Text style={styles.title}>Clients</Text>
+        <TouchableOpacity
+          style={styles.addBtn}
+          onPress={() => navigation.navigate('NewClient', {})}
+        >
+          <Text style={styles.addBtnText}>+ Nouveau</Text>
+        </TouchableOpacity>
+      </View>
+      <View style={styles.searchBox}>
+        <TextInput
+          style={styles.searchInput}
+          placeholder="Rechercher par nom ou téléphone..."
+          value={query}
+          onChangeText={handleSearch}
+          placeholderTextColor="#999"
+        />
+      </View>
       <FlatList
         data={clients}
-        keyExtractor={(item) => String(item.id)}
+        keyExtractor={item => String(item.id)}
         renderItem={renderItem}
-        ListEmptyComponent={<Text style={styles.emptyText}>No clients found.</Text>}
-        contentContainerStyle={styles.listContent}
+        contentContainerStyle={{ padding: 12, paddingBottom: 80 }}
+        ListEmptyComponent={<Text style={styles.empty}>Aucun client trouvé</Text>}
       />
-      <TouchableOpacity
-        style={styles.fab}
-        onPress={() => navigation.navigate('NewClient')}
-      >
-        <Text style={styles.fabText}>+</Text>
-      </TouchableOpacity>
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#F5F5F5' },
+  container: { flex: 1, backgroundColor: '#F0F2F5' },
+  header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: 16, paddingBottom: 8 },
+  title: { fontSize: 22, fontWeight: 'bold', color: '#2C3E50' },
+  addBtn: { backgroundColor: '#3498DB', borderRadius: 8, paddingHorizontal: 14, paddingVertical: 8 },
+  addBtnText: { color: '#FFF', fontWeight: '700' },
+  searchBox: { marginHorizontal: 12, marginBottom: 8 },
   searchInput: {
-    margin: 12,
-    padding: 10,
-    backgroundColor: '#FFF',
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: '#DDD',
-    fontSize: 16,
+    backgroundColor: '#FFF', borderRadius: 10, padding: 12,
+    fontSize: 14, elevation: 1, color: '#2C3E50',
   },
-  listContent: { paddingBottom: 80 },
-  item: {
-    flexDirection: 'row',
-    backgroundColor: '#FFF',
-    marginHorizontal: 12,
-    marginBottom: 8,
-    borderRadius: 8,
-    padding: 14,
-    alignItems: 'center',
-    elevation: 1,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.05,
-    shadowRadius: 1,
+  card: {
+    backgroundColor: '#FFF', borderRadius: 10, padding: 14,
+    marginBottom: 8, elevation: 1,
   },
-  itemInfo: { flex: 1 },
-  itemName: { fontSize: 16, fontWeight: '600', color: '#2C3E50' },
-  itemSub: { fontSize: 13, color: '#7F8C8D', marginTop: 2 },
-  deleteBtn: { padding: 6 },
-  deleteBtnText: { color: '#E74C3C', fontSize: 18 },
-  emptyText: { textAlign: 'center', color: '#999', marginTop: 40, fontSize: 16 },
-  fab: {
-    position: 'absolute',
-    right: 20,
-    bottom: 20,
-    width: 56,
-    height: 56,
-    borderRadius: 28,
-    backgroundColor: '#4A90E2',
-    justifyContent: 'center',
-    alignItems: 'center',
-    elevation: 5,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.3,
-    shadowRadius: 3,
+  cardRow: { flexDirection: 'row', alignItems: 'center' },
+  avatar: {
+    width: 48, height: 48, borderRadius: 24,
+    backgroundColor: '#3498DB', alignItems: 'center', justifyContent: 'center', marginRight: 12,
   },
-  fabText: { color: '#FFF', fontSize: 30, lineHeight: 32 },
+  avatarText: { color: '#FFF', fontSize: 20, fontWeight: 'bold' },
+  info: { flex: 1 },
+  name: { fontSize: 16, fontWeight: '700', color: '#2C3E50' },
+  sub: { fontSize: 13, color: '#7F8C8D', marginTop: 2 },
+  empty: { textAlign: 'center', color: '#999', marginTop: 40, fontSize: 15 },
 });

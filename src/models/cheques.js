@@ -1,56 +1,27 @@
 import { getDatabase } from '../database/db';
 
-export function getAllCheques() {
-  const db = getDatabase();
-  return db.getAllSync(
-    `SELECT ch.*, c.full_name AS client_name
-     FROM cheques ch
-     JOIN clients c ON ch.client_id = c.id
-     ORDER BY ch.due_date ASC`
-  );
-}
-
 export function getChequesBySale(saleId) {
   const db = getDatabase();
-  return db.getAllSync('SELECT * FROM cheques WHERE sale_id = ? ORDER BY due_date ASC', [saleId]);
-}
-
-export function getChequesByClient(clientId) {
-  const db = getDatabase();
-  return db.getAllSync('SELECT * FROM cheques WHERE client_id = ? ORDER BY due_date ASC', [clientId]);
+  return db.getFirstSync('SELECT * FROM cheques WHERE sale_id = ?', [saleId]);
 }
 
 export function createCheque(cheque) {
   const db = getDatabase();
-  const { sale_id, client_id, cheque_number, bank_name, amount, due_date, status, notes } = cheque;
+  const { sale_id, total_cheques_given, cheques_remaining, notes } = cheque;
   const result = db.runSync(
-    `INSERT INTO cheques (sale_id, client_id, cheque_number, bank_name, amount, due_date, status, notes)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
-    [sale_id, client_id, cheque_number ?? null, bank_name ?? null, amount, due_date ?? null, status ?? 'pending', notes ?? null]
+    `INSERT INTO cheques (sale_id, total_cheques_given, cheques_used, cheques_remaining, cheques_returned, notes)
+     VALUES (?, ?, 0, ?, 0, ?)`,
+    [sale_id, total_cheques_given ?? 0, cheques_remaining ?? total_cheques_given ?? 0, notes ?? null]
   );
   return result.lastInsertRowId;
 }
 
-export function updateChequeStatus(id, status) {
+export function updateChequeUsage(saleId) {
   const db = getDatabase();
   db.runSync(
-    `UPDATE cheques SET status = ?, updated_at = datetime('now') WHERE id = ?`,
-    [status, id]
-  );
-}
-
-export function deleteCheque(id) {
-  const db = getDatabase();
-  db.runSync('DELETE FROM cheques WHERE id = ?', [id]);
-}
-
-export function getPendingCheques() {
-  const db = getDatabase();
-  return db.getAllSync(
-    `SELECT ch.*, c.full_name AS client_name
-     FROM cheques ch
-     JOIN clients c ON ch.client_id = c.id
-     WHERE ch.status = 'pending'
-     ORDER BY ch.due_date ASC`
+    `UPDATE cheques SET cheques_used = cheques_used + 1,
+      cheques_remaining = cheques_remaining - 1
+     WHERE sale_id = ? AND cheques_remaining > 0`,
+    [saleId]
   );
 }
