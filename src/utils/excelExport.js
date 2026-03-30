@@ -1,5 +1,6 @@
 import * as FileSystem from 'expo-file-system';
 import * as Sharing from 'expo-sharing';
+import Papa from 'papaparse';
 import { getDatabase } from '../database/db';
 
 function fetchAll(query) {
@@ -7,51 +8,46 @@ function fetchAll(query) {
   return db.getAllSync(query);
 }
 
-export async function exportToExcel() {
-  try {
-    const XLSX = require('xlsx');
-    const wb = XLSX.utils.book_new();
+/**
+ * Export every table to individual CSV files, then share a ZIP-less bundle
+ * by sharing one combined CSV that contains all tables separated by a header row.
+ * Each table block starts with a "## TABLE: <name>" sentinel line so the file
+ * can be re-parsed if needed.
+ */
+export async function exportToCSV() {
+  const tables = [
+    'clients', 'sales', 'sale_items', 'payments',
+    'products', 'cheques', 'stock_movements', 'categories', 'brands', 'guarantors',
+  ];
 
-    const tables = [
-      'clients', 'sales', 'sale_items', 'payments',
-      'products', 'cheques', 'stock_movements', 'categories', 'brands', 'guarantors',
-    ];
+  const sections = tables.map(table => {
+    const rows = fetchAll(`SELECT * FROM ${table}`);
+    const csv = rows.length
+      ? Papa.unparse(rows, { header: true })
+      : '';
+    return `## TABLE: ${table}\n${csv}`;
+  });
 
-    for (const table of tables) {
-      const rows = fetchAll(`SELECT * FROM ${table}`);
-      const ws = XLSX.utils.json_to_sheet(rows.length ? rows : [{}]);
-      XLSX.utils.book_append_sheet(wb, ws, table);
-    }
+  const content = sections.join('\n\n');
+  const date = new Date().toISOString().split('T')[0];
+  const uri = `${FileSystem.documentDirectory}taksit_export_${date}.csv`;
 
-    const wbout = XLSX.write(wb, { type: 'base64', bookType: 'xlsx' });
-    const date = new Date().toISOString().split('T')[0];
-    const uri = `${FileSystem.documentDirectory}taksit_export_${date}.xlsx`;
+  await FileSystem.writeAsStringAsync(uri, content, {
+    encoding: FileSystem.EncodingType.UTF8,
+  });
 
-    await FileSystem.writeAsStringAsync(uri, wbout, {
-      encoding: FileSystem.EncodingType.Base64,
-    });
-
-    await Sharing.shareAsync(uri, {
-      mimeType: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-      dialogTitle: 'Exporter Taksit Manager',
-    });
-    return true;
-  } catch (e) {
-    throw e;
-  }
+  await Sharing.shareAsync(uri, {
+    mimeType: 'text/csv',
+    dialogTitle: 'Exporter Taksit Manager',
+  });
 }
 
 export async function backupDatabase() {
-  try {
-    const dbPath = `${FileSystem.documentDirectory}SQLite/taksit_manager.db`;
-    const backupPath = `${FileSystem.documentDirectory}taksit_backup_${Date.now()}.db`;
-    await FileSystem.copyAsync({ from: dbPath, to: backupPath });
-    await Sharing.shareAsync(backupPath, {
-      mimeType: 'application/octet-stream',
-      dialogTitle: 'Sauvegarder la base de données',
-    });
-    return true;
-  } catch (e) {
-    throw e;
-  }
+  const dbPath = `${FileSystem.documentDirectory}SQLite/taksit_manager.db`;
+  const backupPath = `${FileSystem.documentDirectory}taksit_backup_${Date.now()}.db`;
+  await FileSystem.copyAsync({ from: dbPath, to: backupPath });
+  await Sharing.shareAsync(backupPath, {
+    mimeType: 'application/octet-stream',
+    dialogTitle: 'Sauvegarder la base de données',
+  });
 }
