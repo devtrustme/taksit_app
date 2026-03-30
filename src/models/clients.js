@@ -12,20 +12,32 @@ export function getClientById(id) {
 
 export function createClient(client) {
   const db = getDatabase();
-  const { full_name, phone, address, national_id, notes } = client;
+  const { numero_client, full_name, cin, ccp, wilaya, commune, address, phone_1, phone_2, phone_3, photo_path, notes } = client;
   const result = db.runSync(
-    'INSERT INTO clients (full_name, phone, address, national_id, notes) VALUES (?, ?, ?, ?, ?)',
-    [full_name, phone ?? null, address ?? null, national_id ?? null, notes ?? null]
+    `INSERT INTO clients (numero_client, full_name, cin, ccp, wilaya, commune, address, phone_1, phone_2, phone_3, photo_path, notes)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    [
+      numero_client ?? null, full_name,
+      cin ?? null, ccp ?? null, wilaya ?? null, commune ?? null, address ?? null,
+      phone_1 ?? null, phone_2 ?? null, phone_3 ?? null,
+      photo_path ?? null, notes ?? null,
+    ]
   );
   return result.lastInsertRowId;
 }
 
 export function updateClient(id, client) {
   const db = getDatabase();
-  const { full_name, phone, address, national_id, notes } = client;
+  const { numero_client, full_name, cin, ccp, wilaya, commune, address, phone_1, phone_2, phone_3, photo_path, notes } = client;
   db.runSync(
-    `UPDATE clients SET full_name = ?, phone = ?, address = ?, national_id = ?, notes = ?, updated_at = datetime('now') WHERE id = ?`,
-    [full_name, phone ?? null, address ?? null, national_id ?? null, notes ?? null, id]
+    `UPDATE clients SET numero_client=?, full_name=?, cin=?, ccp=?, wilaya=?, commune=?,
+      address=?, phone_1=?, phone_2=?, phone_3=?, photo_path=?, notes=? WHERE id=?`,
+    [
+      numero_client ?? null, full_name,
+      cin ?? null, ccp ?? null, wilaya ?? null, commune ?? null, address ?? null,
+      phone_1 ?? null, phone_2 ?? null, phone_3 ?? null,
+      photo_path ?? null, notes ?? null, id,
+    ]
   );
 }
 
@@ -38,7 +50,9 @@ export function searchClients(query) {
   const db = getDatabase();
   const like = `%${query}%`;
   return db.getAllSync(
-    'SELECT * FROM clients WHERE full_name LIKE ? OR phone LIKE ? OR national_id LIKE ? ORDER BY full_name ASC',
-    [like, like, like]
+    `SELECT * FROM clients
+     WHERE full_name LIKE ? OR phone_1 LIKE ? OR phone_2 LIKE ? OR phone_3 LIKE ?
+     ORDER BY full_name ASC`,
+    [like, like, like, like]
   );
 }

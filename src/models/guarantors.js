@@ -1,8 +1,8 @@
 import { getDatabase } from '../database/db';
 
-export function getGuarantorsByClient(clientId) {
+export function getAllGuarantors() {
   const db = getDatabase();
-  return db.getAllSync('SELECT * FROM guarantors WHERE client_id = ? ORDER BY full_name ASC', [clientId]);
+  return db.getAllSync('SELECT * FROM guarantors ORDER BY full_name ASC');
 }
 
 export function getGuarantorById(id) {
@@ -12,26 +12,33 @@ export function getGuarantorById(id) {
 
 export function createGuarantor(guarantor) {
   const db = getDatabase();
-  const { client_id, full_name, phone, address, national_id, relationship } = guarantor;
+  const { full_name, phone_1, phone_2 } = guarantor;
   const result = db.runSync(
-    `INSERT INTO guarantors (client_id, full_name, phone, address, national_id, relationship)
-     VALUES (?, ?, ?, ?, ?, ?)`,
-    [client_id, full_name, phone ?? null, address ?? null, national_id ?? null, relationship ?? null]
+    'INSERT INTO guarantors (full_name, phone_1, phone_2) VALUES (?, ?, ?)',
+    [full_name, phone_1 ?? null, phone_2 ?? null]
   );
   return result.lastInsertRowId;
 }
 
 export function updateGuarantor(id, guarantor) {
   const db = getDatabase();
-  const { full_name, phone, address, national_id, relationship } = guarantor;
+  const { full_name, phone_1, phone_2 } = guarantor;
   db.runSync(
-    `UPDATE guarantors SET full_name = ?, phone = ?, address = ?, national_id = ?, relationship = ?, updated_at = datetime('now')
-     WHERE id = ?`,
-    [full_name, phone ?? null, address ?? null, national_id ?? null, relationship ?? null, id]
+    'UPDATE guarantors SET full_name=?, phone_1=?, phone_2=? WHERE id=?',
+    [full_name, phone_1 ?? null, phone_2 ?? null, id]
   );
 }
 
 export function deleteGuarantor(id) {
   const db = getDatabase();
   db.runSync('DELETE FROM guarantors WHERE id = ?', [id]);
+}
+
+export function searchGuarantors(query) {
+  const db = getDatabase();
+  const like = `%${query}%`;
+  return db.getAllSync(
+    'SELECT * FROM guarantors WHERE full_name LIKE ? OR phone_1 LIKE ? ORDER BY full_name ASC',
+    [like, like]
+  );
 }

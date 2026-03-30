@@ -10,23 +10,15 @@ export function getBrandById(id) {
   return db.getFirstSync('SELECT * FROM brands WHERE id = ?', [id]);
 }
 
-export function createBrand(brand) {
+export function createBrand(name) {
   const db = getDatabase();
-  const { name, description } = brand;
-  const result = db.runSync(
-    'INSERT INTO brands (name, description) VALUES (?, ?)',
-    [name, description ?? null]
-  );
+  const result = db.runSync('INSERT INTO brands (name) VALUES (?)', [name]);
   return result.lastInsertRowId;
 }
 
-export function updateBrand(id, brand) {
+export function updateBrand(id, name) {
   const db = getDatabase();
-  const { name, description } = brand;
-  db.runSync(
-    `UPDATE brands SET name = ?, description = ?, updated_at = datetime('now') WHERE id = ?`,
-    [name, description ?? null, id]
-  );
+  db.runSync('UPDATE brands SET name=? WHERE id=?', [name, id]);
 }
 
 export function deleteBrand(id) {

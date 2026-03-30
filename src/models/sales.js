@@ -13,7 +13,7 @@ export function getAllSales() {
 export function getSaleById(id) {
   const db = getDatabase();
   return db.getFirstSync(
-    `SELECT s.*, c.full_name AS client_name
+    `SELECT s.*, c.full_name AS client_name, c.phone_1 AS client_phone
      FROM sales s
      JOIN clients c ON s.client_id = c.id
      WHERE s.id = ?`,
@@ -29,41 +29,26 @@ export function getSalesByClient(clientId) {
 export function createSale(sale) {
   const db = getDatabase();
   const {
-    client_id, total_amount, down_payment, remaining_amount,
-    installment_count, installment_amount, installment_frequency,
-    start_date, status, notes
+    client_id, guarantor_id, sale_date, plan_months,
+    total_price, first_payment, monthly_amount, due_day, notes, status,
   } = sale;
   const result = db.runSync(
-    `INSERT INTO sales (client_id, total_amount, down_payment, remaining_amount,
-      installment_count, installment_amount, installment_frequency, start_date, status, notes)
+    `INSERT INTO sales (client_id, guarantor_id, sale_date, plan_months,
+      total_price, first_payment, monthly_amount, due_day, notes, status)
      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     [
-      client_id, total_amount, down_payment ?? 0, remaining_amount ?? total_amount,
-      installment_count ?? 1, installment_amount ?? 0, installment_frequency ?? 'monthly',
-      start_date ?? null, status ?? 'active', notes ?? null
+      client_id, guarantor_id ?? null,
+      sale_date, plan_months,
+      total_price ?? 0, first_payment ?? 0, monthly_amount ?? 0,
+      due_day ?? null, notes ?? null, status ?? 'active',
     ]
   );
   return result.lastInsertRowId;
 }
 
-export function updateSale(id, sale) {
+export function updateSaleStatus(id, status) {
   const db = getDatabase();
-  const {
-    total_amount, down_payment, remaining_amount,
-    installment_count, installment_amount, installment_frequency,
-    start_date, status, notes
-  } = sale;
-  db.runSync(
-    `UPDATE sales SET total_amount = ?, down_payment = ?, remaining_amount = ?,
-      installment_count = ?, installment_amount = ?, installment_frequency = ?,
-      start_date = ?, status = ?, notes = ?, updated_at = datetime('now')
-     WHERE id = ?`,
-    [
-      total_amount, down_payment ?? 0, remaining_amount ?? total_amount,
-      installment_count ?? 1, installment_amount ?? 0, installment_frequency ?? 'monthly',
-      start_date ?? null, status ?? 'active', notes ?? null, id
-    ]
-  );
+  db.runSync('UPDATE sales SET status=? WHERE id=?', [status, id]);
 }
 
 export function deleteSale(id) {
